@@ -9,11 +9,14 @@ methodology notes in templates/ that describe these filters to site
 visitors):
 
   - ACTIVE_FILTER ("currently on the road"): excludes formally deregistered
-    vehicles and rows with an unusable production year (non-numeric, out of
-    plausible range, or the suspicious 1900 sentinel - see clean.py). This
-    does NOT catch "dead souls" (vehicles gone without formal deregistration)
-    - that's a known, irreducible CEPiK data problem, not something we can
-    filter our way out of. Used for "how many X are on the road" and
+    vehicles, rows with an unusable production year (non-numeric, out of
+    plausible range, or the suspicious 1900 sentinel - see clean.py), and
+    likely_dead_soul rows (old + decades of no registration activity - added
+    after FSO-Warszawa 125P, a car last produced in 1991, showed up as the
+    #2 most common model in Malopolskie before this filter existed). This is
+    a heuristic, not a guarantee - some genuine well-kept classics will be
+    excluded, and some true dead souls that are younger than the age cutoff
+    will still slip through. Used for "how many X are on the road" and
     "average age" style metrics.
   - historical trend metrics intentionally do NOT exclude deregistered
     vehicles: a car first registered in 2010 and scrapped in 2020 is still a
@@ -36,6 +39,7 @@ ACTIVE_FILTER = """
     AND NOT year_is_non_numeric
     AND NOT year_out_of_range
     AND NOT year_is_sentinel
+    AND NOT likely_dead_soul
 """
 
 

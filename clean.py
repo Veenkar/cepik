@@ -6,7 +6,8 @@ needs_review=true so a human can correct them), and rebuilds vehicles_clean
 as a plain derived table - safe to re-run any time, no incremental state.
 
 Suspect flagging (suspect=true, suspect_reasons lists all that apply) covers
-exactly the three cases the project brief calls out:
+the cases the project brief calls out, plus one added after real data exposed
+a gap (see DEAD_SOUL_* constants below):
   - rok_produkcji_nieliczbowy / rok_produkcji_nieprawdopodobny: production
     year is not a number, or outside a plausible range. See NOTES.md for the
     "ZABYTKOWY" and 1900-spike findings that motivate this.
@@ -15,6 +16,11 @@ exactly the three cases the project brief calls out:
     *error*, but every "currently on the road" metric must exclude it - see
     NOTES.md on the "dead souls" problem (this only catches *formal*
     deregistration, not vehicles that are gone without paperwork).
+  - prawdopodobnie_martwa_dusza: old (35+ years) AND no registration
+    activity in 20+ years - catches the much larger *informal* dead-souls
+    case that wyrejestrowany misses entirely. Added after FSO-Warszawa 125P
+    (production ended 1991) showed up as the #2 most common model in
+    Malopolskie by raw count.
 
 Make/model mapping coverage (how many raw values are still needs_review) is
 reported separately in reports/quality.md, not folded into the suspect count
@@ -57,6 +63,24 @@ MIN_PLAUSIBLE_YEAR = 1905  # first mass-produced cars; anything earlier in
 SUSPECT_YEAR_SENTINEL = "1900"  # 187 Malopolskie rows have exactly this value
 # - far more than any other implausible year, so it reads as a legacy
 # "unknown year" placeholder rather than genuine 1900-built cars
+
+# "Dead souls" heuristic: a vehicle that is this old AND has had no
+# registration activity (data_ostatniej_rejestracji_w_kraju - updated on
+# every ownership-transfer re-registration) in this many years is flagged as
+# likely a dead soul, not a real car still on the road.
+#
+# Why these numbers: confirmed on real data after a user spotted FSO-Warszawa
+# 125P ranking #2 by vehicle count in Malopolskie (an car whose production
+# ended in 1991) - 41,699 of 42,813 "active" 125P rows have had their last
+# registration activity stuck in the 1970s-1990s, i.e. 35-50+ years with zero
+# ownership changes, which is not plausible for a genuinely surviving fleet of
+# this size. The combination (not just age, and not just inactivity alone)
+# matters: a 10-year-old one-owner car with no re-registration is normal and
+# must NOT be flagged; only old-AND-dormant should be. This does not replace
+# is_deregistered - it catches a different, much larger failure mode (see
+# NOTES.md): vehicles that were never formally deregistered at all.
+DEAD_SOUL_MIN_AGE_YEARS = 35
+DEAD_SOUL_MAX_INACTIVITY_YEARS = 20
 
 # A handful of well-known make aliases, hand-curated as a starting point -
 # extend mappings/marka_mapping.csv directly for anything else.
@@ -221,6 +245,14 @@ def rebuild_vehicles_clean(con: duckdb.DuckDBPyConnection) -> None:
             CASE WHEN v.model IS NULL OR regexp_matches(trim(v.model), '^[.-]*$') THEN true ELSE false END AS model_missing,
             CASE WHEN v.marka IS NULL THEN true ELSE false END AS marka_missing,
             CASE WHEN v.data_wyrejestrowania IS NOT NULL THEN true ELSE false END AS is_deregistered,
+            CASE
+                WHEN try_cast(v.rok_produkcji AS INTEGER) IS NOT NULL
+                     AND year(current_date) - try_cast(v.rok_produkcji AS INTEGER) > {DEAD_SOUL_MIN_AGE_YEARS}
+                     AND v.data_ostatniej_rejestracji_w_kraju IS NOT NULL
+                     AND year(current_date) - year(v.data_ostatniej_rejestracji_w_kraju) > {DEAD_SOUL_MAX_INACTIVITY_YEARS}
+                THEN true
+                ELSE false
+            END AS likely_dead_soul,
             list_filter(
                 [
                     CASE WHEN try_cast(v.rok_produkcji AS INTEGER) IS NULL THEN 'rok_produkcji_nieliczbowy' END,
@@ -231,7 +263,14 @@ def rebuild_vehicles_clean(con: duckdb.DuckDBPyConnection) -> None:
                     CASE WHEN v.rok_produkcji = '{SUSPECT_YEAR_SENTINEL}' THEN 'rok_produkcji_prawdopodobnie_nieznany' END,
                     CASE WHEN v.model IS NULL OR regexp_matches(trim(v.model), '^[.-]*$') THEN 'brak_modelu' END,
                     CASE WHEN v.marka IS NULL THEN 'marka_brak' END,
-                    CASE WHEN v.data_wyrejestrowania IS NOT NULL THEN 'wyrejestrowany' END
+                    CASE WHEN v.data_wyrejestrowania IS NOT NULL THEN 'wyrejestrowany' END,
+                    CASE
+                        WHEN try_cast(v.rok_produkcji AS INTEGER) IS NOT NULL
+                             AND year(current_date) - try_cast(v.rok_produkcji AS INTEGER) > {DEAD_SOUL_MIN_AGE_YEARS}
+                             AND v.data_ostatniej_rejestracji_w_kraju IS NOT NULL
+                             AND year(current_date) - year(v.data_ostatniej_rejestracji_w_kraju) > {DEAD_SOUL_MAX_INACTIVITY_YEARS}
+                        THEN 'prawdopodobnie_martwa_dusza'
+                    END
                 ],
                 x -> x IS NOT NULL
             ) AS suspect_reasons

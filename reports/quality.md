@@ -6,13 +6,14 @@ Generated: 2026-10-21
 ## Record counts
 
 - Total rows in `vehicles_clean`: 1,915,824
-- Flagged suspect (any reason): 670,491 (35.0%)
+- Flagged suspect (any reason): 891,665 (46.5%)
 
 ### Suspect reasons (a row may have more than one)
 
 | reason | rows |
 |---|---|
 | wyrejestrowany | 501,710 |
+| prawdopodobnie_martwa_dusza | 395,679 |
 | marka_brak | 182,530 |
 | rok_produkcji_nieliczbowy | 30,632 |
 | brak_modelu | 2,792 |

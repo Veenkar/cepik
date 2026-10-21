@@ -45,12 +45,12 @@
 
 <div class="methodology">
   <strong>Metodologia:</strong> liczba pojazdów obejmuje samochody osobowe
-  {{ marka }} {{ model }}, które nie zostały formalnie wyrejestrowane w CEPiK
-  i mają wiarygodny rok produkcji. Wiek liczony jest jako różnica między
-  rokiem bieżącym a rokiem produkcji. Dane nie uwzględniają pojazdów
-  fizycznie nieistniejących, ale nigdy formalnie niewyrejestrowanych
-  ("martwe dusze") — to znana wada danych CEPiK, której nie można w pełni
-  skorygować.
+  {{ marka }} {{ model }}, które nie zostały formalnie wyrejestrowane w CEPiK,
+  mają wiarygodny rok produkcji i nie są prawdopodobnymi "martwymi duszami"
+  (pojazdy starsze niż 35 lat bez żadnej aktywności rejestracyjnej od ponad
+  20 lat są wykluczane — to heurystyka, nie gwarancja). Wiek liczony jest
+  jako różnica między rokiem bieżącym a rokiem produkcji. Szczegóły w
+  NOTES.md.
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
