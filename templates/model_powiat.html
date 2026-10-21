@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block breadcrumbs %}
-<nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › <a href="{{ root }}/model/{{ marka_slug }}/">{{ marka }}</a> › <a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/">{{ model }}</a> › {{ powiat }}</nav>
+<nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › <a href="{{ root }}/model/{{ marka_slug }}/">{{ marka }}</a> › <a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/">{{ model }}</a> › <a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/{{ wojewodztwo_slug }}/">{{ wojewodztwo }}</a> › {{ powiat }}</nav>
 {% endblock %}
 {% block content %}
 <h1>{{ marka }} {{ model }} {{ w_powiecie }}</h1>
@@ -22,8 +22,9 @@
 
 <h2>Zobacz też</h2>
 <ul class="links">
-  <li><a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/">{{ marka }} {{ model }} w całej Małopolsce</a></li>
-  <li><a href="{{ root }}/powiat/{{ powiat_slug }}/">Wszystkie pojazdy {{ w_powiecie }}</a></li>
+  <li><a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/">{{ marka }} {{ model }} w całej Polsce</a></li>
+  <li><a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/{{ wojewodztwo_slug }}/">{{ marka }} {{ model }} w województwie {{ wojewodztwo }}</a></li>
+  <li><a href="{{ root }}/powiat/{{ wojewodztwo_slug }}/{{ powiat_slug }}/">Wszystkie pojazdy {{ w_powiecie }}</a></li>
 </ul>
 
 <div class="methodology">

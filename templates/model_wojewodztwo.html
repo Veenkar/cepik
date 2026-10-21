@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block breadcrumbs %}
+<nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › <a href="{{ root }}/model/{{ marka_slug }}/">{{ marka }}</a> › <a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/">{{ model }}</a> › {{ wojewodztwo }}</nav>
+{% endblock %}
+{% block content %}
+<h1>{{ marka }} {{ model }} {{ w_wojewodztwie }}</h1>
+<p class="lede">
+  {{ w_wojewodztwie_cap }} zarejestrowanych jest
+  <strong>{{ total | fmt_int }}</strong> {{ marka }} {{ model }}
+  {% if rank %}(to {{ rank | ordinal }} najpopularniejszy model w tym województwie){% endif %}.
+  {% if median_age %}Średni wiek pojazdu: {{ mean_age | fmt_float }} roku, mediana: {{ median_age | fmt_float }} roku.{% endif %}
+</p>
+
+<h2>Rozkład roku produkcji {{ w_wojewodztwie }}</h2>
+<table>
+  <thead><tr><th>Rok produkcji</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in by_year %}
+    <tr><td>{{ row.rok_produkcji }}</td><td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Powiaty z największą liczbą {{ marka }} {{ model }}</h2>
+<table>
+  <thead><tr><th>#</th><th>Powiat</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in by_powiat %}
+    <tr><td>{{ loop.index }}</td>
+        <td>{% if row.has_page %}<a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/{{ wojewodztwo_slug }}/{{ row.powiat_slug }}/">{{ row.powiat }}</a>{% else %}{{ row.powiat }}{% endif %}</td>
+        <td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Zobacz też</h2>
+<ul class="links">
+  <li><a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/">{{ marka }} {{ model }} w całej Polsce</a></li>
+  <li><a href="{{ root }}/wojewodztwo/{{ wojewodztwo_slug }}/">Wszystkie pojazdy {{ w_wojewodztwie }}</a></li>
+</ul>
+
+<div class="methodology">
+  <strong>Metodologia:</strong> liczba pojazdów obejmuje samochody osobowe
+  {{ marka }} {{ model }} zarejestrowane {{ w_wojewodztwie }}, które nie
+  zostały formalnie wyrejestrowane w CEPiK, mają wiarygodny rok produkcji i
+  nie są prawdopodobnymi "martwymi duszami" (pojazdy starsze niż 35 lat bez
+  aktywności rejestracyjnej od ponad 20 lat) — zobacz NOTES.md.
+</div>
+{% endblock %}

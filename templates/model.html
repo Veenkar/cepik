@@ -3,9 +3,9 @@
 <nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › <a href="{{ root }}/model/{{ marka_slug }}/">{{ marka }}</a> › {{ model }}</nav>
 {% endblock %}
 {% block content %}
-<h1>{{ marka }} {{ model }} — ile jeździ w Małopolsce?</h1>
+<h1>{{ marka }} {{ model }} — ile jeździ w Polsce?</h1>
 <p class="lede">
-  W województwie małopolskim zarejestrowanych jest obecnie
+  W Polsce zarejestrowanych jest obecnie
   <strong>{{ total | fmt_int }}</strong> {{ marka }} {{ model }}.
   Średni wiek pojazdu: {{ mean_age | fmt_float }} roku,
   mediana: {{ median_age | fmt_float }} roku.
@@ -22,13 +22,13 @@
   </tbody>
 </table>
 
-<h2>Powiaty z największą liczbą {{ marka }} {{ model }}</h2>
+<h2>Województwa z największą liczbą {{ marka }} {{ model }}</h2>
 <table>
-  <thead><tr><th>#</th><th>Powiat</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <thead><tr><th>#</th><th>Województwo</th><th class="num">Liczba pojazdów</th></tr></thead>
   <tbody>
-  {% for row in by_powiat %}
+  {% for row in by_wojewodztwo %}
     <tr><td>{{ loop.index }}</td>
-        <td>{% if row.has_page %}<a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/{{ row.powiat_slug }}/">{{ row.powiat }}</a>{% else %}{{ row.powiat }}{% endif %}</td>
+        <td>{% if row.has_page %}<a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/{{ row.wojewodztwo_slug }}/">{{ row.wojewodztwo }}</a>{% else %}{{ row.wojewodztwo }}{% endif %}</td>
         <td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
   {% endfor %}
   </tbody>

@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Ile samochodów jeździ w Małopolsce?</h1>
+<h1>Ile samochodów jeździ w Polsce?</h1>
 <p class="lede">
-  Statystyki samochodów osobowych zarejestrowanych w województwie małopolskim,
-  na podstawie danych z CEPiK: liczba pojazdów według marki i modelu, rozkład
-  roku produkcji oraz popularność marek i modeli w poszczególnych powiatach.
+  Statystyki samochodów osobowych zarejestrowanych w Polsce, na podstawie
+  danych z CEPiK: liczba pojazdów według marki i modelu, rozkład roku
+  produkcji oraz popularność marek i modeli w poszczególnych województwach
+  i powiatach.
 </p>
 
 <p>
   W bazie: <strong>{{ total_active | fmt_int }}</strong> aktualnie zarejestrowanych
-  samochodów osobowych w {{ n_powiats }} powiatach województwa małopolskiego
+  samochodów osobowych w {{ n_wojewodztwa }} województwach ({{ n_powiats }} powiatach)
   {% if total_no_marka %}(w tym {{ total_no_marka | fmt_int }} pojazdów ze
   starszych rekordów, dla których w danych CEPiK nie udało się jednoznacznie
   wyodrębnić marki — nie są one pokazane w rankingach marek i modeli poniżej){% endif %}.
 </p>
 
-<h2>Najpopularniejsze marki w Małopolsce</h2>
+<h2>Najpopularniejsze marki w Polsce</h2>
 <table>
   <thead><tr><th>#</th><th>Marka</th><th class="num">Liczba pojazdów</th></tr></thead>
   <tbody>
@@ -25,7 +26,7 @@
   </tbody>
 </table>
 
-<h2>Najpopularniejsze modele w Małopolsce</h2>
+<h2>Najpopularniejsze modele w Polsce</h2>
 <table>
   <thead><tr><th>#</th><th>Marka i model</th><th class="num">Liczba pojazdów</th></tr></thead>
   <tbody>
@@ -35,10 +36,10 @@
   </tbody>
 </table>
 
-<h2>Powiaty</h2>
+<h2>Województwa</h2>
 <ul class="links">
-{% for p in powiaty %}
-  <li><a href="{{ root }}/powiat/{{ p.slug }}/">{{ p.nazwa }}</a></li>
+{% for w in wojewodztwa %}
+  <li><a href="{{ root }}/wojewodztwo/{{ w.slug }}/">{{ w.nazwa }}</a> ({{ w.n_vehicles | fmt_int }})</li>
 {% endfor %}
 </ul>
 

@@ -97,22 +97,27 @@ def build_registration_trend(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def build_rankings(con: duckdb.DuckDBPyConnection) -> None:
-    """Top makes and top models per county, currently-active vehicles only."""
+    """Top makes and top models per county (namespaced under voivodeship -
+    powiat names aren't guaranteed globally unique, and the real-world
+    hierarchy nests them under voivodeship anyway) and per voivodeship,
+    currently-active vehicles only."""
     con.execute("DROP TABLE IF EXISTS agg_ranking_marka_powiat")
     con.execute(
         f"""
         CREATE TABLE agg_ranking_marka_powiat AS
         SELECT
+            wojewodztwo,
             powiat,
             marka,
             n_vehicles,
-            RANK() OVER (PARTITION BY powiat ORDER BY n_vehicles DESC) AS rank
+            RANK() OVER (PARTITION BY wojewodztwo, powiat ORDER BY n_vehicles DESC) AS rank
         FROM (
-            SELECT rejestracja_powiat AS powiat, clean_marka AS marka, COUNT(*) AS n_vehicles
+            SELECT rejestracja_wojewodztwo AS wojewodztwo, rejestracja_powiat AS powiat,
+                   clean_marka AS marka, COUNT(*) AS n_vehicles
             FROM vehicles_clean
             WHERE {ACTIVE_FILTER}
               AND NOT marka_missing
-            GROUP BY 1, 2
+            GROUP BY 1, 2, 3
         )
         """
     )
@@ -122,13 +127,55 @@ def build_rankings(con: duckdb.DuckDBPyConnection) -> None:
         f"""
         CREATE TABLE agg_ranking_model_powiat AS
         SELECT
+            wojewodztwo,
             powiat,
             marka,
             model,
             n_vehicles,
-            RANK() OVER (PARTITION BY powiat ORDER BY n_vehicles DESC) AS rank
+            RANK() OVER (PARTITION BY wojewodztwo, powiat ORDER BY n_vehicles DESC) AS rank
         FROM (
-            SELECT rejestracja_powiat AS powiat, clean_marka AS marka, clean_model AS model, COUNT(*) AS n_vehicles
+            SELECT rejestracja_wojewodztwo AS wojewodztwo, rejestracja_powiat AS powiat,
+                   clean_marka AS marka, clean_model AS model, COUNT(*) AS n_vehicles
+            FROM vehicles_clean
+            WHERE {ACTIVE_FILTER}
+              AND NOT model_missing
+              AND NOT marka_missing
+            GROUP BY 1, 2, 3, 4
+        )
+        """
+    )
+
+    con.execute("DROP TABLE IF EXISTS agg_ranking_marka_wojewodztwo")
+    con.execute(
+        f"""
+        CREATE TABLE agg_ranking_marka_wojewodztwo AS
+        SELECT
+            wojewodztwo,
+            marka,
+            n_vehicles,
+            RANK() OVER (PARTITION BY wojewodztwo ORDER BY n_vehicles DESC) AS rank
+        FROM (
+            SELECT rejestracja_wojewodztwo AS wojewodztwo, clean_marka AS marka, COUNT(*) AS n_vehicles
+            FROM vehicles_clean
+            WHERE {ACTIVE_FILTER}
+              AND NOT marka_missing
+            GROUP BY 1, 2
+        )
+        """
+    )
+
+    con.execute("DROP TABLE IF EXISTS agg_ranking_model_wojewodztwo")
+    con.execute(
+        f"""
+        CREATE TABLE agg_ranking_model_wojewodztwo AS
+        SELECT
+            wojewodztwo,
+            marka,
+            model,
+            n_vehicles,
+            RANK() OVER (PARTITION BY wojewodztwo ORDER BY n_vehicles DESC) AS rank
+        FROM (
+            SELECT rejestracja_wojewodztwo AS wojewodztwo, clean_marka AS marka, clean_model AS model, COUNT(*) AS n_vehicles
             FROM vehicles_clean
             WHERE {ACTIVE_FILTER}
               AND NOT model_missing
@@ -140,7 +187,8 @@ def build_rankings(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def build_age_stats(con: duckdb.DuckDBPyConnection) -> None:
-    """Median/mean age per model and per county, currently-active vehicles only."""
+    """Median/mean age per model (nationwide and per voivodeship) and per
+    county, currently-active vehicles only."""
     con.execute("DROP TABLE IF EXISTS agg_age_by_model")
     con.execute(
         f"""
@@ -165,18 +213,66 @@ def build_age_stats(con: duckdb.DuckDBPyConnection) -> None:
         """
     )
 
+    con.execute("DROP TABLE IF EXISTS agg_age_by_model_wojewodztwo")
+    con.execute(
+        f"""
+        CREATE TABLE agg_age_by_model_wojewodztwo AS
+        SELECT
+            wojewodztwo,
+            marka,
+            model,
+            median(age) AS median_age_years,
+            avg(age) AS mean_age_years,
+            COUNT(*) AS n_vehicles
+        FROM (
+            SELECT
+                rejestracja_wojewodztwo AS wojewodztwo,
+                clean_marka AS marka,
+                clean_model AS model,
+                year(current_date) - try_cast(rok_produkcji AS INTEGER) AS age
+            FROM vehicles_clean
+            WHERE {ACTIVE_FILTER}
+              AND NOT model_missing
+              AND NOT marka_missing
+        )
+        GROUP BY 1, 2, 3
+        """
+    )
+
     con.execute("DROP TABLE IF EXISTS agg_age_by_powiat")
     con.execute(
         f"""
         CREATE TABLE agg_age_by_powiat AS
         SELECT
+            wojewodztwo,
             powiat,
             median(age) AS median_age_years,
             avg(age) AS mean_age_years,
             COUNT(*) AS n_vehicles
         FROM (
             SELECT
+                rejestracja_wojewodztwo AS wojewodztwo,
                 rejestracja_powiat AS powiat,
+                year(current_date) - try_cast(rok_produkcji AS INTEGER) AS age
+            FROM vehicles_clean
+            WHERE {ACTIVE_FILTER}
+        )
+        GROUP BY 1, 2
+        """
+    )
+
+    con.execute("DROP TABLE IF EXISTS agg_age_by_wojewodztwo")
+    con.execute(
+        f"""
+        CREATE TABLE agg_age_by_wojewodztwo AS
+        SELECT
+            wojewodztwo,
+            median(age) AS median_age_years,
+            avg(age) AS mean_age_years,
+            COUNT(*) AS n_vehicles
+        FROM (
+            SELECT
+                rejestracja_wojewodztwo AS wojewodztwo,
                 year(current_date) - try_cast(rok_produkcji AS INTEGER) AS age
             FROM vehicles_clean
             WHERE {ACTIVE_FILTER}
@@ -187,10 +283,11 @@ def build_age_stats(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def build_totals(con: duckdb.DuckDBPyConnection) -> None:
-    """Overall active-fleet size, INCLUDING the ~7% of rows with no
-    identifiable make (see NOTES.md) - agg_vehicle_counts excludes those
-    since they can't be attributed to a make/model, which would otherwise
-    make the homepage total undercount the real fleet size."""
+    """Overall (nationwide) active-fleet size, INCLUDING the ~7% of rows
+    with no identifiable make (see NOTES.md) - agg_vehicle_counts excludes
+    those since they can't be attributed to a make/model, which would
+    otherwise make the homepage total undercount the real fleet size. Plus
+    the same breakdown per voivodeship, for the /wojewodztwo/ pages."""
     con.execute("DROP TABLE IF EXISTS agg_totals")
     con.execute(
         f"""
@@ -200,6 +297,22 @@ def build_totals(con: duckdb.DuckDBPyConnection) -> None:
             SUM(CASE WHEN marka_missing THEN 1 ELSE 0 END) AS total_active_no_marka
         FROM vehicles_clean
         WHERE {ACTIVE_FILTER}
+        """
+    )
+
+    con.execute("DROP TABLE IF EXISTS agg_totals_by_wojewodztwo")
+    con.execute(
+        f"""
+        CREATE TABLE agg_totals_by_wojewodztwo AS
+        SELECT
+            rejestracja_wojewodztwo AS wojewodztwo,
+            wojewodztwo_kod,
+            COUNT(*) AS total_active,
+            SUM(CASE WHEN marka_missing THEN 1 ELSE 0 END) AS total_active_no_marka,
+            COUNT(DISTINCT rejestracja_powiat) AS n_powiats
+        FROM vehicles_clean
+        WHERE {ACTIVE_FILTER}
+        GROUP BY 1, 2
         """
     )
 
@@ -222,9 +335,14 @@ def main() -> None:
         "agg_registration_trend",
         "agg_ranking_marka_powiat",
         "agg_ranking_model_powiat",
+        "agg_ranking_marka_wojewodztwo",
+        "agg_ranking_model_wojewodztwo",
         "agg_age_by_model",
+        "agg_age_by_model_wojewodztwo",
         "agg_age_by_powiat",
+        "agg_age_by_wojewodztwo",
         "agg_totals",
+        "agg_totals_by_wojewodztwo",
     ]:
         n = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         print(f"  {table}: {n:,} rows")

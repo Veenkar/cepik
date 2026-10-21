@@ -308,3 +308,34 @@ too would understate the fleet size by a meaningful amount.
    call on how to present this on `/powiat/` pages.
 3. **`sposob-produkcji` weirdness** (years mixed into a "production method"
    field) — low priority, not blocking, flagged for awareness only.
+
+## Addendum: expansion to all 16 voivodeships (2026-10-21)
+
+After the Małopolskie MVP was working end-to-end, scope was expanded to
+nationwide coverage. Key decisions, consistent with the approach above:
+
+- **Data**: all 16 voivodeships bulk-seeded from `/pliki` (same stale
+  2022-04-17 snapshot, same passenger-car filter). The live `/pojazdy`
+  incremental refresh stays scoped to Małopolskie only
+  (`API_INCREMENTAL_VOIVODESHIP` in `run_all.py`) — repeating the earlier
+  decision to not hammer the rate-limited API 16x on every pipeline run.
+  The other 15 voivodeships' data stays at the 2022-04-17 bulk snapshot
+  until someone deliberately runs `ingest.py --voivodeship <code>
+  --api-from ... --api-to ...` for them.
+- **URL structure**: adopted the brief's own original example literally -
+  `/model/<marka>/<model>/` is now nationwide, `/model/<marka>/<model>/
+  <wojewodztwo>/` is the voivodeship intersection (matches `.../malopolskie/`
+  from the brief), and `/model/<marka>/<model>/<wojewodztwo>/<powiat>/` goes
+  one level deeper. `/powiat/` pages are namespaced under their voivodeship
+  (`/powiat/<wojewodztwo>/<powiat>/`) since powiat names aren't guaranteed
+  globally unique and the real administrative hierarchy nests them that way
+  anyway. New `/wojewodztwo/<slug>/` page type added for per-region
+  collective stats (wasn't in the brief's examples, but directly serves the
+  "collective stats" ask).
+- **Known gap not yet re-verified nationwide**: the three missing Małopolskie
+  land counties (krakowski/nowosądecki/tarnowski) were confirmed for that
+  one voivodeship specifically. Whether other voivodeships have an
+  analogous gap (a land county's vehicles folding into its namesake city
+  county) has **not** been checked yet - `build_site.py`'s
+  `MISSING_COUNTY_NOTES` only has entries for Małopolskie. Worth a
+  dedicated pass if this matters (e.g. before publishing).
