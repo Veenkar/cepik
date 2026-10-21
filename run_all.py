@@ -13,6 +13,14 @@ back to the bulk file's 2022-04-17 snapshot is NOT done automatically here -
 see NOTES.md on why that's a multi-hour, rate-limited job better run
 deliberately on its own (`python ingest.py --api-from ... --api-to ...`),
 not on every pipeline run.
+
+Scope note: --bulk loops over all 16 voivodeships (nationwide), but the
+live-API incremental step only refreshes API_INCREMENTAL_VOIVODESHIP
+(Malopolskie) - doing that for all 16 on every run would multiply the
+already-severe rate limiting 16x (see NOTES.md). The other 15 voivodeships
+stay at their bulk-file snapshot date until a deliberate, separate
+`ingest.py --voivodeship <code> --api-from ... --api-to ...` run is made for
+them.
 """
 from __future__ import annotations
 
@@ -31,6 +39,7 @@ RUN_LOG_PATH = REPORTS_DIR / "run_log.txt"
 
 SANITY_CHANGE_THRESHOLD = 0.20  # ±20%
 INITIAL_BOOTSTRAP_DAYS = 14
+API_INCREMENTAL_VOIVODESHIP = "12"  # Malopolskie - see module docstring
 
 
 def log(message: str) -> None:
@@ -51,7 +60,9 @@ def run_step(args: list[str]) -> None:
 
 def determine_api_range(con: duckdb.DuckDBPyConnection) -> tuple[date, date]:
     rows = con.execute(
-        "SELECT params FROM ingest_log WHERE source = 'api' AND status = 'success'"
+        "SELECT params FROM ingest_log WHERE source = 'api' AND status = 'success' "
+        "AND params LIKE ?",
+        [f"voivodeship={API_INCREMENTAL_VOIVODESHIP};%"],
     ).fetchall()
     last_to = None
     for (params,) in rows:
@@ -87,7 +98,10 @@ def main() -> None:
 
     run_step(["ingest.py", "--bulk"])
     if api_from <= api_to:
-        run_step(["ingest.py", "--api-from", str(api_from), "--api-to", str(api_to)])
+        run_step([
+            "ingest.py", "--voivodeship", API_INCREMENTAL_VOIVODESHIP,
+            "--api-from", str(api_from), "--api-to", str(api_to),
+        ])
     else:
         log("API window empty (already up to date) - skipping")
 

@@ -1,12 +1,18 @@
-"""Download CEPiK vehicle data for one voivodeship and load it into DuckDB.
+"""Download CEPiK vehicle data and load it into DuckDB.
 
 Two sources, both idempotent (safe to re-run):
 
-  --bulk              one-time historical snapshot from /pliki (stale, see
-                       NOTES.md section 3 - dated 2022-04-17 for every
-                       voivodeship as of this writing)
-  --api-from/--api-to  incremental data from the /pojazdy API for a date
-                       range (first-registration date), paginated
+  --bulk                            one-time historical snapshot from
+                                     /pliki (stale, see NOTES.md section 3 -
+                                     dated 2022-04-17 for every voivodeship
+                                     as of this writing). Loops over all 16
+                                     real voivodeships unless --voivodeship
+                                     restricts it to one.
+  --voivodeship CODE --api-from/-to  incremental data from the /pojazdy API
+                                     for one voivodeship and date range
+                                     (first-registration date), paginated.
+                                     One voivodeship at a time - /pojazdy
+                                     doesn't accept more than one.
 
 Rows are deduplicated by pojazd_id (primary key + ON CONFLICT DO NOTHING), so
 re-running either step never creates duplicates. All vehicle types are kept
@@ -45,7 +51,17 @@ USER_AGENT = (
     f"cepik-stats-pl/0.1 (niekomercyjny projekt osobisty; kontakt: {CONTACT_EMAIL})"
 )
 
-VOIVODESHIP_CODE = "12"  # Malopolskie - MVP scope, see NOTES.md
+# All 16 real voivodeship TERYT codes (excludes "XX" = undetermined, which
+# is not a real region and has no bulk file worth ingesting). Source:
+# /slowniki/wojewodztwa, see NOTES.md.
+ALL_VOIVODESHIP_CODES = {
+    "02": "DOLNOŚLĄSKIE", "04": "KUJAWSKO-POMORSKIE", "06": "LUBELSKIE",
+    "08": "LUBUSKIE", "10": "ŁÓDZKIE", "12": "MAŁOPOLSKIE",
+    "14": "MAZOWIECKIE", "16": "OPOLSKIE", "18": "PODKARPACKIE",
+    "20": "PODLASKIE", "22": "POMORSKIE", "24": "ŚLĄSKIE",
+    "26": "ŚWIĘTOKRZYSKIE", "28": "WARMIŃSKO-MAZURSKIE",
+    "30": "WIELKOPOLSKIE", "32": "ZACHODNIOPOMORSKIE",
+}
 
 # Passenger-car "rodzaj" values observed in the Malopolskie bulk file
 # (canonical + known misspellings/variants with non-trivial occurrence
@@ -233,8 +249,8 @@ def download_bulk_file(session: requests.Session, voivodeship_code: str) -> tupl
     return csv_path, file_date
 
 
-def load_bulk_file(con: duckdb.DuckDBPyConnection, csv_path: Path, file_date: str) -> None:
-    params = f"voivodeship={VOIVODESHIP_CODE};file={csv_path.name}"
+def load_bulk_file(con: duckdb.DuckDBPyConnection, csv_path: Path, file_date: str, voivodeship_code: str) -> None:
+    params = f"voivodeship={voivodeship_code};file={csv_path.name}"
     if already_done(con, "bulk", params):
         print(f"  already loaded: {params} - skipping (use --force to redo)")
         return
@@ -335,12 +351,12 @@ def month_chunks(date_from: date, date_to: date):
         cur = chunk_end + timedelta(days=1)
 
 
-def fetch_api_range(con: duckdb.DuckDBPyConnection, session: requests.Session, date_from: date, date_to: date, force: bool) -> None:
-    raw_dir = RAW_DIR / "api" / VOIVODESHIP_CODE
+def fetch_api_range(con: duckdb.DuckDBPyConnection, session: requests.Session, date_from: date, date_to: date, force: bool, voivodeship_code: str) -> None:
+    raw_dir = RAW_DIR / "api" / voivodeship_code
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     for chunk_from, chunk_to in month_chunks(date_from, date_to):
-        params_key = f"voivodeship={VOIVODESHIP_CODE};from={chunk_from};to={chunk_to}"
+        params_key = f"voivodeship={voivodeship_code};from={chunk_from};to={chunk_to}"
         if not force and already_done(con, "api", params_key):
             print(f"  already fetched {chunk_from}..{chunk_to} - skipping (use --force to redo)")
             continue
@@ -353,7 +369,7 @@ def fetch_api_range(con: duckdb.DuckDBPyConnection, session: requests.Session, d
         try:
             while True:
                 query = {
-                    "wojewodztwo": VOIVODESHIP_CODE,
+                    "wojewodztwo": voivodeship_code,
                     "data-od": chunk_from.strftime("%Y%m%d"),
                     "data-do": chunk_to.strftime("%Y%m%d"),
                     "pokaz-wszystkie-pola": "true",
@@ -429,7 +445,12 @@ def parse_date(s: str) -> date:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bulk", action="store_true", help="download+load the bulk file")
+    parser.add_argument("--bulk", action="store_true", help="download+load the bulk file(s)")
+    parser.add_argument(
+        "--voivodeship", choices=sorted(ALL_VOIVODESHIP_CODES), default=None,
+        help="restrict to one voivodeship TERYT code (required for --api-from/--api-to, "
+             "since /pojazdy only accepts one at a time; --bulk loops over all codes if omitted)",
+    )
     parser.add_argument("--api-from", type=parse_date, help="fetch API data from this date (YYYY-MM-DD)")
     parser.add_argument("--api-to", type=parse_date, help="fetch API data up to this date (YYYY-MM-DD)")
     parser.add_argument("--force", action="store_true", help="re-run even if already logged as done")
@@ -437,6 +458,8 @@ def main() -> None:
 
     if not args.bulk and not (args.api_from and args.api_to):
         parser.error("pass --bulk and/or --api-from/--api-to")
+    if (args.api_from or args.api_to) and not args.voivodeship:
+        parser.error("--api-from/--api-to require --voivodeship (one code at a time)")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -446,13 +469,16 @@ def main() -> None:
     session = make_session()
 
     if args.bulk:
-        print("== bulk file ingestion ==")
-        csv_path, file_date = download_bulk_file(session, VOIVODESHIP_CODE)
-        load_bulk_file(con, csv_path, file_date)
+        codes = [args.voivodeship] if args.voivodeship else sorted(ALL_VOIVODESHIP_CODES)
+        print(f"== bulk file ingestion: {len(codes)} voivodeship(s) ==")
+        for code in codes:
+            print(f"-- {code} {ALL_VOIVODESHIP_CODES[code]} --")
+            csv_path, file_date = download_bulk_file(session, code)
+            load_bulk_file(con, csv_path, file_date, code)
 
     if args.api_from and args.api_to:
-        print(f"== API ingestion: {args.api_from} .. {args.api_to} ==")
-        fetch_api_range(con, session, args.api_from, args.api_to, args.force)
+        print(f"== API ingestion: {args.voivodeship} {args.api_from} .. {args.api_to} ==")
+        fetch_api_range(con, session, args.api_from, args.api_to, args.force, args.voivodeship)
 
     total = con.execute("SELECT COUNT(*) FROM vehicles_raw").fetchone()[0]
     print(f"\nvehicles_raw total rows: {total:,}")
