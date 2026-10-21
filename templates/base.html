@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<meta name="description" content="{{ description }}">
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
+<style>
+  :root {
+    --fg: #1a1a1a; --bg: #ffffff; --muted: #595959; --accent: #0a5c36;
+    --border: #d9d9d9; --table-stripe: #f5f5f5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--fg); background: var(--bg); margin: 0; line-height: 1.5;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  header.site { border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  header.site .wrap { padding-top: 1rem; padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: baseline; }
+  header.site a.brand { font-weight: 700; text-decoration: none; color: var(--accent); font-size: 1.1rem; }
+  nav.breadcrumbs { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; }
+  nav.breadcrumbs a { color: var(--muted); }
+  h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.2rem; margin-top: 2rem; }
+  p.lede { color: var(--muted); font-size: 1.05rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+  tbody tr:nth-child(odd) { background: var(--table-stripe); }
+  th { border-bottom: 2px solid var(--border); }
+  td.num, th.num { text-align: right; }
+  ul.links { columns: 2; list-style: none; padding: 0; }
+  ul.links li { margin-bottom: 0.3rem; }
+  .methodology { background: var(--table-stripe); border-left: 3px solid var(--accent); padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); margin: 1.5rem 0; }
+  canvas { max-width: 100%; }
+  footer.site { border-top: 1px solid var(--border); margin-top: 3rem; font-size: 0.85rem; color: var(--muted); }
+  footer.site .wrap { padding-top: 1rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="{{ root }}/">CEPiK w liczbach</a>
+    <span>Statystyki pojazdów zarejestrowanych w Małopolsce</span>
+  </div>
+</header>
+<div class="wrap">
+  {% block breadcrumbs %}{% endblock %}
+  {% block content %}{% endblock %}
+</div>
+<footer class="site">
+  <div class="wrap">
+    <p>
+      Źródło danych: CEPiK (Centralna Ewidencja Pojazdów i Kierowców), Ministerstwo Cyfryzacji —
+      <a href="https://api.cepik.gov.pl" rel="nofollow">api.cepik.gov.pl</a>.
+      Dane zaktualizowano: {{ data_updated_at }}.
+    </p>
+    <p>To jest <strong>nieoficjalna</strong> strona, niezwiązana z Ministerstwem Cyfryzacji ani CEPiK.</p>
+  </div>
+</footer>
+</body>
+</html>

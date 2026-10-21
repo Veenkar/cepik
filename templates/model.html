@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block breadcrumbs %}
+<nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › <a href="{{ root }}/model/{{ marka_slug }}/">{{ marka }}</a> › {{ model }}</nav>
+{% endblock %}
+{% block content %}
+<h1>{{ marka }} {{ model }} — ile jeździ w Małopolsce?</h1>
+<p class="lede">
+  W województwie małopolskim zarejestrowanych jest obecnie
+  <strong>{{ total | fmt_int }}</strong> {{ marka }} {{ model }}.
+  Średni wiek pojazdu: {{ mean_age | fmt_float }} roku,
+  mediana: {{ median_age | fmt_float }} roku.
+</p>
+
+<h2>Rozkład roku produkcji</h2>
+<canvas id="yearChart" height="220"></canvas>
+<table>
+  <thead><tr><th>Rok produkcji</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in by_year %}
+    <tr><td>{{ row.rok_produkcji }}</td><td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Powiaty z największą liczbą {{ marka }} {{ model }}</h2>
+<table>
+  <thead><tr><th>#</th><th>Powiat</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in by_powiat %}
+    <tr><td>{{ loop.index }}</td>
+        <td>{% if row.has_page %}<a href="{{ root }}/model/{{ marka_slug }}/{{ model_slug }}/{{ row.powiat_slug }}/">{{ row.powiat }}</a>{% else %}{{ row.powiat }}{% endif %}</td>
+        <td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if related_models %}
+<h2>Inne modele {{ marka }}</h2>
+<ul class="links">
+{% for m in related_models %}
+  <li><a href="{{ root }}/model/{{ marka_slug }}/{{ m.model_slug }}/">{{ m.model }}</a> ({{ m.n_vehicles | fmt_int }})</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+<div class="methodology">
+  <strong>Metodologia:</strong> liczba pojazdów obejmuje samochody osobowe
+  {{ marka }} {{ model }}, które nie zostały formalnie wyrejestrowane w CEPiK
+  i mają wiarygodny rok produkcji. Wiek liczony jest jako różnica między
+  rokiem bieżącym a rokiem produkcji. Dane nie uwzględniają pojazdów
+  fizycznie nieistniejących, ale nigdy formalnie niewyrejestrowanych
+  ("martwe dusze") — to znana wada danych CEPiK, której nie można w pełni
+  skorygować.
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+new Chart(document.getElementById('yearChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ chart_years | tojson }},
+    datasets: [{ label: 'Liczba pojazdów', data: {{ chart_counts | tojson }}, backgroundColor: '#0a5c36' }]
+  },
+  options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}

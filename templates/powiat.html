@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block breadcrumbs %}
+<nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › Powiaty › {{ nazwa }}</nav>
+{% endblock %}
+{% block content %}
+<h1>Najpopularniejsze samochody {{ w_powiecie }}</h1>
+<p class="lede">
+  {{ w_powiecie_cap }} zarejestrowanych jest obecnie
+  <strong>{{ total | fmt_int }}</strong> samochodów osobowych.
+  Średni wiek pojazdu: {{ mean_age | fmt_float }} roku,
+  mediana: {{ median_age | fmt_float }} roku.
+</p>
+{% if note %}<p class="lede">{{ note }}</p>{% endif %}
+
+<h2>Najpopularniejsze marki</h2>
+<table>
+  <thead><tr><th>#</th><th>Marka</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in top_makes %}
+    <tr><td>{{ row.rank }}</td><td><a href="{{ root }}/model/{{ row.marka_slug }}/">{{ row.marka }}</a></td><td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Najpopularniejsze modele</h2>
+<table>
+  <thead><tr><th>#</th><th>Marka i model</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in top_models %}
+    <tr><td>{{ row.rank }}</td>
+        <td>{% if row.has_page %}<a href="{{ root }}/model/{{ row.marka_slug }}/{{ row.model_slug }}/{{ powiat_slug }}/">{{ row.marka }} {{ row.model }}</a>{% else %}{{ row.marka }} {{ row.model }}{% endif %}</td>
+        <td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Inne powiaty</h2>
+<ul class="links">
+{% for p in other_powiaty %}
+  <li><a href="{{ root }}/powiat/{{ p.slug }}/">{{ p.nazwa }}</a></li>
+{% endfor %}
+</ul>
+
+<div class="methodology">
+  <strong>Metodologia:</strong> ranking obejmuje samochody osobowe
+  zarejestrowane {{ w_powiecie }}, które nie zostały formalnie
+  wyrejestrowane w CEPiK i mają wiarygodny rok produkcji. Dane nie
+  uwzględniają "martwych dusz" — zobacz NOTES.md w repozytorium projektu.
+</div>
+{% endblock %}

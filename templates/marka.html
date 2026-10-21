@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block breadcrumbs %}
+<nav class="breadcrumbs"><a href="{{ root }}/">Start</a> › {{ marka }}</nav>
+{% endblock %}
+{% block content %}
+<h1>{{ marka }} — modele i statystyki w Małopolsce</h1>
+<p class="lede">
+  W województwie małopolskim zarejestrowanych jest obecnie
+  <strong>{{ total | fmt_int }}</strong> samochodów osobowych marki {{ marka }}.
+</p>
+
+<h2>Modele {{ marka }}</h2>
+<table>
+  <thead><tr><th>Model</th><th class="num">Liczba pojazdów</th></tr></thead>
+  <tbody>
+  {% for row in models %}
+    <tr><td>{% if row.has_page %}<a href="{{ root }}/model/{{ marka_slug }}/{{ row.model_slug }}/">{{ row.model }}</a>{% else %}{{ row.model }}{% endif %}</td><td class="num">{{ row.n_vehicles | fmt_int }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="methodology">
+  <strong>Metodologia:</strong> liczba pojazdów obejmuje samochody osobowe
+  marki {{ marka }}, które nie zostały formalnie wyrejestrowane w CEPiK i
+  mają wiarygodny rok produkcji. Modele z mniej niż 10 pojazdami nie mają
+  osobnej strony (zbyt mało danych), ale są uwzględnione w liczbach powyżej.
+</div>
+{% endblock %}

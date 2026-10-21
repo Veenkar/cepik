@@ -1,0 +1,10 @@
+[2026-10-21T14:18:47] === run_all.py starting ===
+[2026-10-21T14:18:47] previous total active vehicles: 1242525
+[2026-10-21T14:18:47] incremental API window: 2026-10-21 .. 2026-10-20
+[2026-10-21T14:18:47] running: ingest.py --bulk
+[2026-10-21T14:18:50] API window empty (already up to date) - skipping
+[2026-10-21T14:18:50] running: clean.py
+[2026-10-21T14:18:52] running: aggregate.py
+[2026-10-21T14:18:52] new total active vehicles: 1242525
+[2026-10-21T14:18:52] running: build_site.py
+[2026-10-21T14:20:13] === run_all.py finished successfully ===
