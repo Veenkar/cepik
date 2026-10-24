@@ -46,10 +46,8 @@ RAW_DIR = DATA_DIR / "raw"
 DB_PATH = DATA_DIR / "cepik.duckdb"
 
 API_BASE = "https://api.cepik.gov.pl"
-CONTACT_EMAIL = "veenkar@gmail.com"
-USER_AGENT = (
-    f"cepik-stats-pl/0.1 (niekomercyjny projekt osobisty; kontakt: {CONTACT_EMAIL})"
-)
+PROJECT_URL = "https://github.com/Veenkar/cepik"
+USER_AGENT = f"cepik-stats-pl/0.1 (niekomercyjny projekt osobisty; +{PROJECT_URL})"
 
 # All 16 real voivodeship TERYT codes (excludes "XX" = undetermined, which
 # is not a real region and has no bulk file worth ingesting). Source:
